@@ -288,15 +288,23 @@ function copyAsImage(event) {
         }),
       ])
       .then(() => {
-        console.log("Copied");
+        // console.log("Copied");
+        event.target.innerText = "Copied!";
+
+        setTimeout(function () {
+          event.target.innerText = "Copy as Image";
+          event.target.removeAttribute("disabled");
+        }, 1000);
+      })
+      .catch(function () {
+        // console.error("oops, something went wrong!", error);
+        event.target.innerText = "Error!";
+
+        setTimeout(function () {
+          event.target.innerText = "Copy as Image";
+          event.target.removeAttribute("disabled");
+        }, 1000);
       });
-
-    event.target.innerText = "Copied!";
-
-    setTimeout(function () {
-      event.target.innerText = "Copy as Image";
-      event.target.removeAttribute("disabled");
-    }, 1000);
   });
 }
 
