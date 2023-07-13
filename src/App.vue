@@ -1,6 +1,6 @@
 <template>
   <div style="margin-bottom: 10px">
-    <button style="margin-right: 5px" @click="save()">Save</button>
+    <button style="margin-right: 5px" @click="save($event)">Save</button>
     <button style="margin-right: 5px" @click="removeCompleted()">
       Remove Completed
     </button>
@@ -11,7 +11,7 @@
     <tr>
       <td style="border: none"></td>
       <th colspan="8">Daily Status Meeting</th>
-      <th style="border: none"></th>
+      <th style="border: none; background-color: transparent"></th>
     </tr>
     <tr>
       <td style="border: none"></td>
@@ -23,7 +23,7 @@
       <th>Time Spent <small>(in hrs)</small></th>
       <th>Status</th>
       <th>Remarks</th>
-      <th style="border: none"></th>
+      <th style="border: none; background-color: transparent"></th>
     </tr>
     <tr v-if="data.length == 0">
       <td style="border: none"></td>
@@ -165,7 +165,7 @@
               {{ task.name }}
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
-              {{ task.startDate }}
+              {{ task.startDate.split("-").reverse().join("-") }}
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
               {{ task.estimation }}
@@ -253,20 +253,22 @@ function removeCompleted() {
 
 function addOwner() {
   const name = prompt("Enter owner name: ");
-  data.value.push({
-    name: name,
-    location: "GDC",
-    tasks: [
-      {
-        name: "",
-        startDate: todaysDate,
-        estimation: 0,
-        timeSpent: 0,
-        status: "In Progress",
-        remarks: "",
-      },
-    ],
-  });
+  if (name) {
+    data.value.push({
+      name: name,
+      location: "GDC",
+      tasks: [
+        {
+          name: "",
+          startDate: todaysDate,
+          estimation: 0,
+          timeSpent: 0,
+          status: "In Progress",
+          remarks: "",
+        },
+      ],
+    });
+  }
 }
 
 function removeOwner(index) {
@@ -280,6 +282,7 @@ function copyAsImage(event) {
 
   event.target.setAttribute("disabled", true);
   event.target.innerText = "Copying..";
+
   domtoimage.toBlob(node).then(function (blob) {
     navigator.clipboard
       .write([
@@ -308,8 +311,18 @@ function copyAsImage(event) {
   });
 }
 
-function save() {
+function save(event) {
+  event.target.setAttribute("disabled", true);
+  event.target.innerText = "Saving..";
+
   localStorage.setItem("data", JSON.stringify(data.value));
+
+  event.target.innerText = "Saved";
+
+  setTimeout(function () {
+    event.target.removeAttribute("disabled");
+    event.target.innerText = "Save";
+  }, 1000);
 }
 </script>
 
@@ -320,6 +333,7 @@ function save() {
 
 table {
   border-collapse: collapse;
+  width: 100%;
 }
 
 th,
@@ -332,6 +346,11 @@ td {
   padding: 5px;
 }
 
+th {
+  background-color: #336699;
+  color: white;
+}
+
 td.completed {
   background-color: #66cc66;
 }
@@ -342,9 +361,5 @@ td.completed {
   top: -99em;
   width: 100%;
   font-size: 24px;
-}
-
-#preview table {
-  width: 100%;
 }
 </style>
