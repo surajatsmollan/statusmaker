@@ -80,13 +80,18 @@
               </button>
             </td>
             <td v-if="taskIndex == 0" :rowspan="owner.tasks.length + 1">
-              {{ owner.name }}
+              <input type="text" v-model="owner.name" />
             </td>
             <td v-if="taskIndex == 0" :rowspan="owner.tasks.length + 1">
               <select v-model="owner.location">
+                <option></option>
                 <option>Home</option>
                 <option>GDC</option>
                 <option>HO</option>
+                <option>On Leave</option>
+                <option>On Sick Leave</option>
+                <option>On Maternity Leave</option>
+                <option>On Paternity Leave</option>
               </select>
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
@@ -103,6 +108,7 @@
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
               <select v-model="task.status">
+                <option></option>
                 <option>In Progress</option>
                 <option>Completed</option>
                 <option>On Hold</option>
@@ -155,7 +161,11 @@
       <template v-for="(owner, ownerIndex) in data" :key="ownerIndex">
         <template v-for="(task, taskIndex) in owner.tasks" :key="taskIndex">
           <tr>
-            <td v-if="taskIndex == 0" :rowspan="owner.tasks.length">
+            <td
+              v-if="taskIndex == 0"
+              :rowspan="owner.tasks.length"
+              style="text-align: center"
+            >
               {{ owner.name }}
             </td>
             <td v-if="taskIndex == 0" :rowspan="owner.tasks.length">
@@ -361,5 +371,9 @@ td.completed {
   top: -99em;
   width: 100%;
   font-size: 24px;
+}
+
+#preview td {
+  height: 20px;
 }
 </style>
