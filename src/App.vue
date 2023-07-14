@@ -161,11 +161,7 @@
       <template v-for="(owner, ownerIndex) in data" :key="ownerIndex">
         <template v-for="(task, taskIndex) in owner.tasks" :key="taskIndex">
           <tr>
-            <td
-              v-if="taskIndex == 0"
-              :rowspan="owner.tasks.length"
-              style="text-align: center"
-            >
+            <td v-if="taskIndex == 0" :rowspan="owner.tasks.length">
               {{ owner.name }}
             </td>
             <td v-if="taskIndex == 0" :rowspan="owner.tasks.length">
@@ -354,6 +350,7 @@ td {
 th,
 td {
   padding: 5px;
+  text-align: center;
 }
 
 th {
