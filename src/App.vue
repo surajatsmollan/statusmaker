@@ -1,10 +1,18 @@
 <template>
   <div style="margin-bottom: 10px">
-    <button style="margin-right: 5px" @click="save($event)">Save</button>
+    <button style="margin-right: 5px" @click="save()" id="saveButton">
+      Save
+    </button>
     <button style="margin-right: 5px" @click="removeCompleted()">
       Remove Completed
     </button>
     <button style="margin-right: 5px" @click="addOwner()">Add Owner</button>
+    <button style="margin-right: 5px" @click="exportData($event)">
+      Export
+    </button>
+    <button style="margin-right: 5px" @click="showImportDialog()">
+      Import
+    </button>
     <button @click="copyAsImage($event)">Copy as Image</button>
   </div>
   <table>
@@ -19,8 +27,8 @@
       <th>Location</th>
       <th>Ticket ID</th>
       <th>Start Date</th>
-      <th>Estimation <small>(in hrs)</small></th>
-      <th>Time Spent <small>(in hrs)</small></th>
+      <th>Estimation <br /><small>(in hrs)</small></th>
+      <th>Time Spent <br /><small>(in hrs)</small></th>
       <th>Status</th>
       <th>Remarks</th>
       <th style="border: none; background-color: transparent"></th>
@@ -101,10 +109,20 @@
               <input type="date" v-model="task.startDate" :max="todaysDate" />
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
-              <input type="number" v-model="task.estimation" />
+              <input
+                type="number"
+                v-model="task.estimation"
+                style="width: 50px"
+              />
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
-              <input type="number" v-model="task.timeSpent" />
+              <input
+                type="number"
+                v-model="task.timeSpent"
+                style="width: 50px"
+                @keydown.space="addTimeSpent(ownerIndex, taskIndex)"
+                @keydown.s="subtractTimeSpent(ownerIndex, taskIndex)"
+              />
             </td>
             <td :class="{ completed: task.status == 'Completed' }">
               <select v-model="task.status">
@@ -117,7 +135,44 @@
             <td :class="{ completed: task.status == 'Completed' }">
               <input type="text" v-model="task.remarks" />
             </td>
-            <td>
+            <td style="border-right: none; padding-right: 0">
+              <button
+                style="margin-bottom: 3px"
+                @click="moveUp(ownerIndex, taskIndex)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="black"
+                  viewBox="0 0 24 24"
+                  style="width: 10px; height: 10px"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4.5 15.75l7.5-7.5 7.5 7.5"
+                  />
+                </svg>
+              </button>
+              <br />
+              <button
+                style="margin-bottom: 3px"
+                @click="moveDown(ownerIndex, taskIndex)"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="black"
+                  viewBox="0 0 24 24"
+                  style="width: 10px; height: 10px"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                  />
+                </svg>
+              </button>
+            </td>
+            <td style="border-left: none">
               <button @click="removeTask(ownerIndex, taskIndex)">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -143,7 +198,7 @@
       </template>
     </template>
   </table>
-  <div id="preview">
+  <div id="preview" style="border-bottom: 1px solid black">
     <table>
       <tr>
         <th colspan="8">Daily Status Meeting</th>
@@ -190,11 +245,44 @@
       </template>
     </table>
   </div>
+  <dialog id="export">
+    <button
+      style="position: absolute; right: 10px; color: red; font-weight: bold"
+      @click="$event.target.parentElement.close()"
+    >
+      x
+    </button>
+    <button @click="copyExportData">Copy</button><br />
+    <textarea
+      style="margin-top: 10px"
+      cols="150"
+      rows="10"
+      v-model="compressedExport"
+      id="exportTextarea"
+    ></textarea>
+  </dialog>
+  <dialog id="import">
+    <button
+      style="position: absolute; right: 10px; color: red; font-weight: bold"
+      @click="$event.target.parentElement.close()"
+    >
+      x
+    </button>
+    <button @click="importExportedData($event)">Import</button>
+    <br />
+    <textarea
+      style="margin-top: 10px"
+      cols="150"
+      rows="10"
+      id="importTextArea"
+    ></textarea>
+  </dialog>
 </template>
 
 <script setup>
 import { onMounted, ref } from "vue";
 import domtoimage from "dom-to-image-more";
+import lzjs from "lzjs";
 
 const todaysDate = new Date().toJSON().split("T")[0];
 
@@ -208,22 +296,38 @@ onMounted(async () => {
   }
 });
 
-function moveUp(index) {
+function moveUp(ownerIndex, taskIndex = null) {
   let u = data.value;
-  if (index > 0) {
-    let el = u[index];
-    u[index] = u[index - 1];
-    u[index - 1] = el;
+  if (taskIndex !== null) {
+    if (ownerIndex > 0 && taskIndex > 0) {
+      let el = u[ownerIndex].tasks[taskIndex];
+      u[ownerIndex].tasks[taskIndex] = u[ownerIndex].tasks[taskIndex - 1];
+      u[ownerIndex].tasks[taskIndex - 1] = el;
+    }
+  } else {
+    if (ownerIndex > 0) {
+      let el = u[ownerIndex];
+      u[ownerIndex] = u[ownerIndex - 1];
+      u[ownerIndex - 1] = el;
+    }
   }
   data.value = u;
 }
 
-function moveDown(index) {
+function moveDown(ownerIndex, taskIndex = null) {
   let d = data.value;
-  if (index !== -1 && index < d.length - 1) {
-    let el = d[index];
-    d[index] = d[index + 1];
-    d[index + 1] = el;
+  if (taskIndex !== null) {
+    if (taskIndex !== -1 && taskIndex < d[ownerIndex].tasks.length - 1) {
+      let el = d[ownerIndex].tasks[taskIndex];
+      d[ownerIndex].tasks[taskIndex] = d[ownerIndex].tasks[taskIndex + 1];
+      d[ownerIndex].tasks[taskIndex + 1] = el;
+    }
+  } else {
+    if (ownerIndex !== -1 && ownerIndex < d.length - 1) {
+      let el = d[ownerIndex];
+      d[ownerIndex] = d[ownerIndex + 1];
+      d[ownerIndex + 1] = el;
+    }
   }
   data.value = d;
 }
@@ -290,6 +394,12 @@ function copyAsImage(event) {
   event.target.innerText = "Copying..";
 
   domtoimage.toBlob(node).then(function (blob) {
+    // document
+    //   .querySelector("#preview table")
+    //   .setAttribute(
+    //     "margin-bottom",
+    //     window.getComputedStyle(document.querySelector("#preview table")).height
+    //   );
     navigator.clipboard
       .write([
         new ClipboardItem({
@@ -317,18 +427,105 @@ function copyAsImage(event) {
   });
 }
 
-function save(event) {
-  event.target.setAttribute("disabled", true);
-  event.target.innerText = "Saving..";
+function save() {
+  const button = document.getElementById("saveButton");
+  button.setAttribute("disabled", true);
+  button.innerText = "Saving..";
 
   localStorage.setItem("data", JSON.stringify(data.value));
 
-  event.target.innerText = "Saved";
+  button.innerText = "Saved";
+
+  setTimeout(function () {
+    button.removeAttribute("disabled");
+    button.innerText = "Save";
+  }, 1000);
+}
+
+const compressedExport = ref("");
+
+function exportData() {
+  const modal = document.getElementById("export");
+
+  save();
+
+  compressedExport.value = lzjs.compressToBase64(JSON.stringify(data.value));
+
+  modal.showModal();
+
+  setTimeout(function () {
+    document.getElementById("exportTextarea").select();
+  }, 1);
+}
+
+function copyExportData(event) {
+  let exportData = document.getElementById("exportTextarea");
+
+  event.target.setAttribute("disabled", true);
+  event.target.innerText = "Copying..";
+
+  exportData.select();
+
+  navigator.clipboard.writeText(exportData.value);
+
+  event.target.innerText = "Copied!";
 
   setTimeout(function () {
     event.target.removeAttribute("disabled");
-    event.target.innerText = "Save";
-  }, 1000);
+    event.target.innerText = "Copy";
+  }, 500);
+}
+
+function showImportDialog() {
+  const modal = document.getElementById("import");
+  modal.showModal();
+}
+
+function importExportedData(event) {
+  const modal = document.getElementById("import");
+  const exportedData = document.getElementById("importTextArea").value;
+  event.target.setAttribute("disabled", true);
+  event.target.innerText = "Importing..";
+
+  data.value = JSON.parse(lzjs.decompressFromBase64(exportedData));
+
+  event.target.innerText = "Imported!";
+
+  setTimeout(function () {
+    event.target.removeAttribute("disabled");
+    event.target.innerText = "Import";
+  }, 500);
+
+  setTimeout(function () {
+    document.getElementById("importTextArea").value = "";
+    modal.close();
+  }, 500);
+}
+
+function addTimeSpent(ownerIndex, taskIndex) {
+  // alert(event.target.value);
+  const originalValue = parseInt(
+    data.value[ownerIndex].tasks[taskIndex].timeSpent
+  );
+  const valueToAdd = parseInt(prompt(""));
+
+  if (valueToAdd) {
+    data.value[ownerIndex].tasks[taskIndex].timeSpent =
+      originalValue + valueToAdd;
+  }
+}
+
+function subtractTimeSpent(ownerIndex, taskIndex) {
+  const originalValue = parseInt(
+    data.value[ownerIndex].tasks[taskIndex].timeSpent
+  );
+  const valueToSubtract = parseInt(prompt(""));
+
+  if (valueToSubtract) {
+    let answerValue = originalValue - valueToSubtract;
+    data.value[ownerIndex].tasks[taskIndex].timeSpent =
+      answerValue < 0 ? 0 : answerValue;
+  }
 }
 </script>
 
@@ -360,6 +557,11 @@ th {
 
 td.completed {
   background-color: #66cc66;
+}
+
+input,
+select {
+  height: 30px;
 }
 
 #preview {
