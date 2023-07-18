@@ -3,6 +3,14 @@
     <button style="margin-right: 5px" @click="save()" id="saveButton">
       Save
     </button>
+    <button
+      style="margin-right: 5px"
+      @click="fetchFromGist()"
+      id="downloadButton"
+      :disabled="Object.keys(gist).length == 0"
+    >
+      Fetch
+    </button>
     <button style="margin-right: 5px" @click="removeCompleted()">
       Remove Completed
     </button>
@@ -283,16 +291,42 @@
 import { onMounted, ref } from "vue";
 import domtoimage from "dom-to-image-more";
 import lzjs from "lzjs";
+import axios from "axios";
+
+var token = null;
+var gist = ref({});
 
 const todaysDate = new Date().toJSON().split("T")[0];
 
 const data = ref([]);
 
 onMounted(async () => {
-  // const json = await (await fetch("http://localhost:8080/data.json")).json();
+  const key = new URLSearchParams(window.location.search).get("key");
+  token = "ghp_" + atob(new URLSearchParams(window.location.search).get("key"));
+
+  if (key) {
+    axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+
+    try {
+      const content = (
+        await axios.get("https://api.github.com/gists")
+      ).data.filter((g) => "statusmaker.data" in g.files);
+
+      if (content.length) {
+        gist.value = content[0];
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   if (localStorage.getItem("data")) {
     const local = localStorage.getItem("data");
     data.value = JSON.parse(local);
+  } else {
+    if (Object.keys(gist.value).length) {
+      fetchFromGist();
+    }
   }
 });
 
@@ -427,12 +461,22 @@ function copyAsImage(event) {
   });
 }
 
-function save() {
+async function save() {
   const button = document.getElementById("saveButton");
   button.setAttribute("disabled", true);
   button.innerText = "Saving..";
 
   localStorage.setItem("data", JSON.stringify(data.value));
+
+  if (Object.keys(gist.value).length) {
+    await axios.patch("https://api.github.com/gists/" + gist.value.id, {
+      files: {
+        "statusmaker.data": {
+          content: lzjs.compressToBase64(JSON.stringify(data.value)),
+        },
+      },
+    });
+  }
 
   button.innerText = "Saved";
 
@@ -440,6 +484,15 @@ function save() {
     button.removeAttribute("disabled");
     button.innerText = "Save";
   }, 1000);
+}
+
+async function fetchFromGist() {
+  const content = await (
+    await fetch(gist.value["files"]["statusmaker.data"]["raw_url"])
+  ).text();
+  const decompressed = lzjs.decompressFromBase64(content);
+  data.value = JSON.parse(decompressed);
+  localStorage.setItem("data", decompressed);
 }
 
 const compressedExport = ref("");
