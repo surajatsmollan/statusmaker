@@ -310,7 +310,7 @@ onMounted(async () => {
     try {
       const content = (
         await axios.get("https://api.github.com/gists")
-      ).data.filter((g) => "statusmaker.data" in g.files);
+      ).data.filter((g) => "statusmaker" in g.files);
 
       if (content.length) {
         gist.value = content[0];
@@ -471,7 +471,7 @@ async function save() {
   if (Object.keys(gist.value).length) {
     await axios.patch("https://api.github.com/gists/" + gist.value.id, {
       files: {
-        "statusmaker.data": {
+        statusmaker: {
           content: lzjs.compressToBase64(JSON.stringify(data.value)),
         },
       },
@@ -488,7 +488,7 @@ async function save() {
 
 async function fetchFromGist() {
   const content = await (
-    await fetch(gist.value["files"]["statusmaker.data"]["raw_url"])
+    await fetch(gist.value["files"]["statusmaker"]["raw_url"])
   ).text();
   const decompressed = lzjs.decompressFromBase64(content);
   data.value = JSON.parse(decompressed);
